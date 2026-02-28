@@ -28,11 +28,35 @@ uv tool install nagios-mcp
    Create a `nagios_config.yaml` or `nagios_config.json` file with the configuration parameters given below.
 
 ```yaml
-nagios_url: "http://localhost/nagios"
-nagios_user: "your_nagios_core_username"
-nagios_pass: "your_nagios_core_password"
-ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it empty ("")
+nagios_url: "https://your-nagios-host/nagios"
+nagios_user: "your_keycloak_username"
+client_id: "your_oauth2_client_id"
+oauth_token_url: "https://keycloak.example.com/auth/realms/myrealm/protocol/openid-connect/token"
+ca_cert_path: ""  # path to CA cert bundle for HTTPS, or leave empty
 ```
+
+3. Set secret environment variables
+
+   Passwords must not be stored in the config file. Set them before starting:
+   ```bash
+   export NAGIOS_PASS="your_keycloak_password"
+   export NAGIOS_CLIENT_SECRET="your_oauth2_client_secret"
+   ```
+   For MCP hosts (Claude Desktop, Cursor, etc.), pass via the `env` block:
+   ```jsonc
+   {
+     "mcpServers": {
+       "nagios": {
+         "command": "uvx",
+         "args": ["nagios-mcp", "--config", "PATH_TO_CONFIG"],
+         "env": {
+           "NAGIOS_PASS": "your_keycloak_password",
+           "NAGIOS_CLIENT_SECRET": "your_oauth2_client_secret"
+         }
+       }
+     }
+   }
+   ```
 
 ### Starting the SSE server
 

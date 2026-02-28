@@ -1,6 +1,8 @@
 import argparse
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -65,12 +67,19 @@ def load_config(config_path: str) -> Dict[str, Any]:
                 return yaml.safe_load(f)
 
 def validate_config(config: Dict[str, Any]) -> None:
-    """Validate that required configuration keys are present"""
-    required_keys = ["nagios_url", "nagios_user", "nagios_pass", "ca_cert_path"]
+    """Validate that required configuration keys are present and env vars are set"""
+    required_keys = ["nagios_url", "nagios_user", "client_id", "oauth_token_url"]
     missing_keys = [key for key in required_keys if key not in config]
-
     if missing_keys:
         raise ValueError(f"Missing required configuration keys: {missing_keys}")
+
+    missing_env = [v for v in ["NAGIOS_PASS", "NAGIOS_CLIENT_SECRET"] if not os.environ.get(v)]
+    if missing_env:
+        print(f"Error: Required environment variables not set: {missing_env}")
+        print("Export them before starting the server:")
+        for var in missing_env:
+            print(f"  export {var}=...")
+        sys.exit(1)
 
 @server.list_tools()
 async def handle_list_tools() -> List[types.Tool]:
@@ -208,11 +217,15 @@ async def main():
 
             # Initialize global Nagios Configs
             initialize_nagios_config(
-                config["nagios_url"],
-                config["nagios_user"],
-                config["nagios_pass"]
+                nagios_url=config["nagios_url"],
+                nagios_user=config["nagios_user"],
+                nagios_pass=os.environ["NAGIOS_PASS"],
+                client_id=config["client_id"],
+                client_secret=os.environ["NAGIOS_CLIENT_SECRET"],
+                oauth_token_url=config["oauth_token_url"],
+                ca_cert_path=config.get("ca_cert_path") or None,
             )
-        except (FileNotFoundError, ValueError, json.JSONDecodeError, yaml.YAMLError) as e:
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, yaml.YAMLError, RuntimeError) as e:
             print(f"Error loading configuration: {e}")
             return 1
     else:
